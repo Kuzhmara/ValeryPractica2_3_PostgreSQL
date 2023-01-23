@@ -1,0 +1,195 @@
+CREATE TYPE grade_type AS ENUM ('junior', 'middle', 'senior', 'lead');
+CREATE TYPE score_type AS ENUM ('A', 'B', 'C', 'D', 'E');
+
+CREATE TABLE IF NOT EXISTS departments (
+    id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    name VARCHAR (255) NOT NULL,
+    director_name VARCHAR (255),
+    employee_count SMALLINT)
+
+INSERT INTO departments (
+    name,
+    director_name,
+    employee_count
+)
+VALUES
+    ('DE', 'Vladimirov', 3),
+    ('DA', 'Troccki', 3);
+
+
+CREATE TABLE IF NOT EXISTS employees (
+    id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    surname VARCHAR (255) NOT NULL,
+    birthday DATE NOT NULL,
+    grade grade_type NOT NULL,
+    salary INT,
+    department_id INT,
+    driver_license BOOLEAN);
+
+ALTER TABLE employees ADD CONSTRAINT department_fk
+    FOREIGN KEY (department_id)
+    REFERENCES departments(id)
+    ON DELETE CASCADE;
+
+INSERT INTO employees (
+    surname,
+    birthday,
+    grade,
+    salary,
+    department_id,
+    driver_license
+)
+VALUES
+    ('Ivanov', '1992-04-25', 'middle', 150000, 1, True),
+    ('Semenov', '1998-09-17', 'junior', 80000, 1, False),
+    ('Vladimirov', '1993-06-21', 'senior', 250000, 1, True),
+    ('Troccki', '1982-12-02', 'middle', 130000, 2, True),
+    ('Demidov', '1976-11-15', 'junior', 70000, 2, False),
+    ('Timurov', '1991-12-01', 'junior', 70000, 2, False);
+
+CREATE TABLE IF NOT EXISTS scores (
+    score_id INT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    employee_id INT,
+    q1 score_type,
+    q2 score_type,
+    q3 score_type,
+    q4 score_type,
+    CONSTRAINT employee_fk
+        FOREIGN KEY (employee_id)
+        REFERENCES employees(id)
+        ON DELETE CASCADE);
+
+ALTER TABLE employees ADD startdate date NULL;
+ALTER TABLE employees ADD position VARCHAR (255) NULL;
+
+UPDATE employees SET startdate = '2018-01-05', position = 'date_engineer' WHERE employees.id=1;
+UPDATE employees SET startdate = '2020-07-05', position = 'date_engineer' WHERE employees.id=2;
+UPDATE employees SET startdate = '2013-08-19', position = 'director' WHERE employees.id=3;
+UPDATE employees SET startdate = '2009-10-12', position = 'director' WHERE employees.id=4;
+UPDATE employees SET startdate = '2018-01-15', position = 'data_analyst' WHERE employees.id=5;
+UPDATE employees SET startdate = '2017-10-12', position = 'data_analyst' WHERE employees.id=6;
+
+INSERT INTO scores (
+    employee_id,
+    q1,
+    q2,
+    q3,
+    q4
+)
+VALUES
+    (1, 'A', 'A', 'A', 'A'),
+    (2, 'C', 'C', 'D', 'C'),
+    (3, 'A', 'A', 'A', 'A'),
+    (4, 'A', 'A', 'A', 'A'),
+    (5, 'A', 'A', 'A', 'A'),
+    (6, 'B', 'B', 'E', 'A');
+
+
+INSERT INTO departments (
+    name,
+    director_name,
+    employee_count
+)
+VALUES
+    ('data_mining', 'Grigoriev', 3);
+
+
+INSERT INTO employees (
+    surname,
+    birthday,
+    grade,
+    salary,
+    department_id,
+    driver_license,
+    startdate,
+    position
+)
+VALUES
+    ('Grigoriev', '1982-03-30', senior', 250000, 3, True, '2022-06-01', 'director'),
+    ('Kamaev', '1989-12-01', 'middle', 130000, 3, True, '2022-07-01', 'machine_learning_engineer'),
+    ('Ignatiev', '1995-08-12', 'junior', 80000, 3, False, '2022-07-15', 'machine_learning_engineer');
+
+INSERT INTO scores (
+    employee_id,
+    q1,
+    q2,
+    q3,
+    q4
+)
+VALUES
+    (7, NULL, 'A', 'A', 'A'),
+    (8, NULL, NULL, 'B', 'A'),
+    (9, NULL, NULL, 'C', 'B');
+
+6.1 Уникальный номер сотрудника, его ФИО и стаж работы – для всех сотрудников компании
+select id, surname, ((CURRENT_DATE - startdate)/365) as Work_experience_in_years from employees e;
+
+6.2 Уникальный номер сотрудника, его ФИО и стаж работы – только первых 3-х сотрудников
+select id, surname, ((CURRENT_DATE - startdate)/365) as Work_experience_in_years from employees e limit 3;
+
+6.3 Уникальный номер сотрудников - водителей
+select id from employees e where (driver_license = True);
+
+6.4 Выведите номера сотрудников, которые хотя бы за 1 квартал получили оценку D или E
+select employee_id from scores 
+where ((q1 = 'D') or (q1 = 'E') or (q2 = 'D') or (q2 = 'E') or (q3 = 'D') or (q3 = 'E') or (q4 = 'D') or (q4 = 'E'));
+
+6.5 Выведите самую высокую зарплату в компании.
+select max(salary) from employees e;
+
+UPDATE departments SET employee_count = 4 WHERE departments.id=1;
+
+6.6 * Выведите название самого крупного отдела
+SELECT name, employee_count FROM departments
+WHERE employee_count = (SELECT max(employee_count) FROM departments);
+
+6.7 * Выведите номера сотрудников от самых опытных до вновь прибывших
+select id, startdate from employees e ORDER BY startdate;
+
+6.8 * Рассчитайте среднюю зарплату для каждого уровня сотрудников
+select grade, AVG(salary) from employees e GROUP BY grade;
+
+6.9 * Добавьте столбец с информацией о коэффициенте годовой премии к основной таблице. 
+ALTER TABLE employees ADD bonus INT NULL;
+
+SELECT *, q1_score*q1_score*q1_score*q1_score as bonus_score from (
+SELECT *, case when q1 = 'A' then 1.2
+               when q1 = 'B' then 1.1
+               when q1 = 'C' then 1
+               when q1 = 'D' then 0.9
+               when q1 = 'E' then 0.8
+               else 1 end as q1_score,
+          case when q2 = 'A' then 1.2
+               when q2 = 'B' then 1.1
+               when q2 = 'C' then 1
+               when q2 = 'D' then 0.9
+               when q2 = 'E' then 0.8
+               else 1 end as q2_score,
+          case when q3 = 'A' then 1.2
+               when q3 = 'B' then 1.1
+               when q3 = 'C' then 1
+               when q3 = 'D' then 0.9
+               when q3 = 'E' then 0.8
+               else 1 end as q3_score,
+          case when q4 = 'A' then 1.2
+               when q4 = 'B' then 1.1
+               when q4 = 'C' then 1
+               when q4 = 'D' then 0.9
+               when q4 = 'E' then 0.8
+               else 1 end as q4_score
+                from scores) q_s
+	  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
